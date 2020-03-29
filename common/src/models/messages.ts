@@ -21,19 +21,22 @@ export type ServerToClientMessage =
       x: number;
       y: number;
     }
-  | {
+  | ({
       type: 'createEntity';
-      entityType: 'shot';
       entityId: string;
       x: number;
       y: number;
-    }
+    } & ({entityType: 'shot'} | {entityType: 'swoopingEnemy'; health: number}))
   | {
       type: 'worldState';
       entities: ({entityId: string; x: number; y: number} & (
         | {
             type: 'player';
             lastProcessedInputSequenceNumber: number;
+          }
+        | {
+            type: 'swoopingEnemy';
+            health: number;
           }
         | {
             type: 'wall';

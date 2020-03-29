@@ -3,7 +3,15 @@ import {unreachable} from '../../../common/src/utils/unreachable';
 import {uuid} from '../../../common/src/utils/uuid';
 import {ClientSocket, IClientSocket} from '../clientSocket';
 import {GameConstants} from '../../../common/src/game/gameConstants';
-import {Entity, PlayerEntity, ShotEntity, WallEntity} from '../../../common/src/entities/entity';
+import {
+  Entity,
+  EntityTypeOptions,
+  EntityTypes,
+  PlayerEntity,
+  ShotEntity,
+  SwoopingEnemyEntity,
+  WallEntity,
+} from '../../../common/src/entities/entity';
 import {Game} from '../../../common/src/game/game';
 import {assert} from '../../../common/src/utils/animationUtils';
 
@@ -120,6 +128,18 @@ export class ClientGame extends Game {
                 shotEntity.updatePosition();
                 this.entities.push(shotEntity);
                 break;
+              case 'swoopingEnemy':
+                const swoopingEnemyEntity = new SwoopingEnemyEntity(this, message.entityId, message.health);
+                swoopingEnemyEntity.x = message.x;
+                swoopingEnemyEntity.y = message.y;
+                swoopingEnemyEntity.positionBuffer.push({
+                  time: +new Date() - GameConstants.serverTickRate,
+                  x: message.x,
+                  y: message.y,
+                });
+                swoopingEnemyEntity.updatePosition();
+                this.entities.push(swoopingEnemyEntity);
+                break;
             }
           }
           break;
@@ -157,6 +177,13 @@ export class ClientGame extends Game {
                     foundEntity = shotEntity;
                     shotEntity.updatePosition();
                     break;
+                  case 'swoopingEnemy':
+                    const swoopingEnemy = new SwoopingEnemyEntity(this, entity.entityId, entity.health);
+                    swoopingEnemy.x = entity.x;
+                    swoopingEnemy.y = entity.y;
+                    foundEntity = swoopingEnemy;
+                    swoopingEnemy.updatePosition();
+                    break;
                 }
                 this.entities.push(foundEntity);
               }
@@ -188,7 +215,6 @@ export class ClientGame extends Game {
       }
     }
   }
-  createEntity(entityType: string, x: number, y: number): void {}
   tick(duration: number) {
     if (!this.connectionId) {
       return;
@@ -278,6 +304,8 @@ export class ClientGame extends Game {
     liveEntity.applyInput(input);
     this.sendMessageToServer({type: 'playerInput', ...input});
   }
+
+  createEntity<T extends EntityTypes>(type: T, options: EntityTypeOptions[T]): void {}
 }
 
 export class LivePlayerEntity extends PlayerEntity {

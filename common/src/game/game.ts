@@ -1,5 +1,5 @@
 import {Collisions, Result} from 'collisions';
-import {Entity, ShotEntity} from '../entities/entity';
+import {Entity, EntityTypeOptions, EntityTypes, ShotEntity} from '../entities/entity';
 import {uuid} from '../utils/uuid';
 
 export abstract class Game {
@@ -21,7 +21,7 @@ export abstract class Game {
     }
   }
 
-  abstract createEntity(entityType: string, x: number, y: number): void;
+  abstract createEntity<T extends EntityTypes>(type: T, options: EntityTypeOptions[T]): void;
 
   destroyEntity(entity: Entity) {
     entity.destroy();

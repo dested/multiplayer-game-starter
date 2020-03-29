@@ -4,7 +4,16 @@ import {IServerSocket} from '../serverSocket';
 import {uuid} from '../../../common/src/utils/uuid';
 import {ColorUtils} from '../../../common/src/utils/colorUtils';
 import {GameConstants} from '../../../common/src/game/gameConstants';
-import {Entity, PendingInput, PlayerEntity, ShotEntity, WallEntity} from '../../../common/src/entities/entity';
+import {
+  Entity,
+  EntityTypeOptions,
+  EntityTypes,
+  PendingInput,
+  PlayerEntity,
+  ShotEntity,
+  SwoopingEnemyEntity,
+  WallEntity,
+} from '../../../common/src/entities/entity';
 import {assert} from '../../../common/src/utils/animationUtils';
 import {Game} from '../../../common/src/game/game';
 
@@ -135,6 +144,10 @@ export class ServerGame extends Game {
       console.log(this.queuedMessages.length, 'remaining');
     }
 
+    if (tickIndex % 50 === 0) {
+      this.createEntity('swoopingEnemy', {x: 500, y: 100, health: 10});
+    }
+
     for (const entity of this.entities) {
       entity.tick(duration);
     }
@@ -163,6 +176,15 @@ export class ServerGame extends Game {
               height: e.height,
               entityId: e.entityId,
               type: 'wall',
+            };
+          case 'swoopingEnemy':
+            assert(e instanceof SwoopingEnemyEntity);
+            return {
+              x: e.x,
+              y: e.y,
+              health: e.health,
+              entityId: e.entityId,
+              type: 'swoopingEnemy',
             };
           case 'shot':
             assert(e instanceof ShotEntity);
@@ -212,19 +234,36 @@ export class ServerGame extends Game {
     this.queuedMessages.push({connectionId, message});
   }
 
-  createEntity(type: 'shot', x: number, y: number) {
-    switch (type) {
+  createEntity<T extends EntityTypes>(entityType: any, options: any) {
+    switch (entityType) {
+      case 'player':
+        break;
+      case 'wall':
+        break;
       case 'shot':
         const shotEntity = new ShotEntity(this, uuid());
-        shotEntity.start(x, y);
+        shotEntity.start(options.x, options.y);
         this.sendMessageToClients({
           type: 'createEntity',
-          entityType: 'shot',
+          entityType,
           entityId: shotEntity.entityId,
           x: shotEntity.x,
           y: shotEntity.y,
         });
         this.entities.push(shotEntity);
+        break;
+      case 'swoopingEnemy':
+        const swoopingEnemyEntity = new SwoopingEnemyEntity(this, uuid(), options.health);
+        swoopingEnemyEntity.start(options.x, options.y);
+        this.sendMessageToClients({
+          type: 'createEntity',
+          entityType,
+          health: swoopingEnemyEntity.health,
+          entityId: swoopingEnemyEntity.entityId,
+          x: swoopingEnemyEntity.x,
+          y: swoopingEnemyEntity.y,
+        });
+        this.entities.push(swoopingEnemyEntity);
         break;
     }
   }

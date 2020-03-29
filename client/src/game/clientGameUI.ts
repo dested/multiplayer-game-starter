@@ -118,6 +118,11 @@ export class ClientGameUI extends ClientGame {
           // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
           context.fillRect(entity.x - 5, entity.y - 5, 10, 10);
           break;
+        case 'swoopingEnemy':
+          context.fillStyle = 'red';
+          // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+          context.fillRect(entity.x - 25, entity.y - 25, 50, 50);
+          break;
       }
     }
 
@@ -145,7 +150,7 @@ export class ClientGameUI extends ClientGame {
               }
             }
           } else {
-            context.fillStyle = 'red';
+            context.fillStyle = 'blue';
             // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
             context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
           }
