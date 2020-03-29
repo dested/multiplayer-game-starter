@@ -3,9 +3,13 @@ import {unreachable} from '../../../common/src/utils/unreachable';
 import {IServerSocket} from '../serverSocket';
 import {uuid} from '../../../common/src/utils/uuid';
 import {ColorUtils} from '../../../common/src/utils/colorUtils';
+import {GameConstants} from '../../../common/src/game/gameConstants';
+import {Entity, PendingInput} from '../../../common/src/entities/entity';
 
 export class ServerGame {
-  users: {connectionId: string}[] = [];
+  users: {connectionId: string; entity: ServerEntity}[] = [];
+
+  entities: ServerEntity[] = [];
 
   constructor(private serverSocket: IServerSocket) {
     serverSocket.start(
@@ -27,7 +31,7 @@ export class ServerGame {
       try {
         const now = +new Date();
         const duration = now - time;
-        if (duration > 220) {
+        if (duration > GameConstants.serverTickRate * 1.2) {
           console.log(duration);
         }
         time = +new Date();
@@ -41,7 +45,7 @@ export class ServerGame {
         // console.timeEnd('gc');
         setTimeout(() => {
           processTick();
-        }, Math.max(Math.min(200, 200 - tickTime), 1));
+        }, Math.max(Math.min(GameConstants.serverTickRate, GameConstants.serverTickRate - tickTime), 1));
       } catch (ex) {
         console.error(ex);
       }
@@ -57,14 +61,24 @@ export class ServerGame {
       return;
     }
     this.users.splice(this.users.indexOf(client), 1);
+    this.entities.splice(this.entities.indexOf(client.entity), 1);
   }
 
   clientJoin(connectionId: string) {
-    const teamId = uuid();
-    const color = ColorUtils.randomColor();
-
-    this.users.push({connectionId});
-    this.sendMessageToClient(connectionId, {type: 'joined'});
+    // const teamId = uuid();
+    // const color = ColorUtils.randomColor();
+    const entity = new ServerEntity(uuid());
+    entity.x = Math.random() * 200;
+    entity.y = Math.random() * 200;
+    this.users.push({connectionId, entity});
+    this.entities.push(entity);
+    this.sendMessageToClient(connectionId, {
+      type: 'joined',
+      entityId: entity.entityId,
+      x: entity.x,
+      y: entity.y,
+      clientId: connectionId,
+    });
   }
 
   serverTick(tickIndex: number, duration: number, tickTime: number) {
@@ -84,11 +98,18 @@ export class ServerGame {
       const q = this.queuedMessages[i];
       switch (q.message.type) {
         case 'join':
-          this.clientJoin(q.connectionId);
+          {
+            this.clientJoin(q.connectionId);
+          }
           break;
-        case 'join2':
-          this.clientJoin(q.connectionId);
+        case 'playerInput': {
+          // if (this.validateInput(q.message)) {
+          const user = this.users.find(a => a.connectionId === q.connectionId);
+          user.entity.applyInput(q.message);
+          // }
+
           break;
+        }
         default:
           unreachable(q.message);
       }
@@ -98,6 +119,17 @@ export class ServerGame {
     } else {
       console.log(this.queuedMessages.length, 'remaining');
     }
+
+    this.sendMessageToClients({
+      type: 'worldState',
+      entities: this.entities.map(e => ({
+        x: e.x,
+        y: e.y,
+        entityId: e.entityId,
+        lastProcessedInputSequenceNumber: e.lastProcessedInputSequenceNumber,
+        type: 'player',
+      })),
+    });
 
     for (const c of this.users) {
       const messages: ServerToClientMessage[] = [];
@@ -125,5 +157,12 @@ export class ServerGame {
 
   processMessage(connectionId: string, message: ClientToServerMessage) {
     this.queuedMessages.push({connectionId, message});
+  }
+}
+
+export class ServerEntity extends Entity {
+  applyInput(input: PendingInput) {
+    super.applyInput(input);
+    this.lastProcessedInputSequenceNumber = input.inputSequenceNumber;
   }
 }

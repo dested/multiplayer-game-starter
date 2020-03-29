@@ -12,8 +12,7 @@ export class ServerToClientMessageParser {
         case 'joined':
           buff.addUint8(1);
           break;
-        case 'joined2':
-          buff.addUint8(2);
+        case 'worldState':
           break;
         default:
           throw unreachable(message);
@@ -26,7 +25,7 @@ export class ServerToClientMessageParser {
     const reader = new ArrayBufferReader(buffer);
     return reader.loop(() => {
       const type = reader.readUint8();
-      switch (type) {
+      /* switch (type) {
         case 1:
           return {
             type: 'joined',
@@ -38,7 +37,8 @@ export class ServerToClientMessageParser {
           };
         default:
           throw new Error('Missing buffer enum');
-      }
+      }*/
+      return undefined as any;
     });
   }
 }

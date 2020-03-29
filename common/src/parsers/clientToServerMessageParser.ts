@@ -10,8 +10,7 @@ export class ClientToServerMessageParser {
       case 'join':
         buff.addUint8(1);
         break;
-      case 'join2':
-        buff.addUint8(2);
+      case 'playerInput':
         break;
       default:
         throw unreachable(message);
@@ -27,10 +26,6 @@ export class ClientToServerMessageParser {
       case 1:
         return {
           type: 'join',
-        };
-      case 2:
-        return {
-          type: 'join2',
         };
       default:
         throw new Error('Missing buffer enum');

@@ -33,9 +33,10 @@ export class ClientGameUI extends ClientGame {
       true
     );
 
+    /*
     let lastPress: Date = new Date();
     let doubleTap = false;
-    manager.on('press', e => {
+      manager.on('press', e => {
       doubleTap = +new Date() - +lastPress < 200;
       lastPress = new Date();
     });
@@ -46,6 +47,30 @@ export class ClientGameUI extends ClientGame {
     manager.on('tap', e => {});
 
     manager.on('doubletap', e => {});
+*/
+    document.onkeydown = e => {
+      if (e.keyCode === 38) {
+        this.liveEntity?.pressUp();
+      } else if (e.keyCode === 40) {
+        this.liveEntity?.pressDown();
+      } else if (e.keyCode === 37) {
+        this.liveEntity?.pressLeft();
+      } else if (e.keyCode === 39) {
+        this.liveEntity?.pressRight();
+      }
+      // e.preventDefault();
+    };
+    document.onkeyup = e => {
+      if (e.keyCode === 38) {
+        this.liveEntity?.releaseUp();
+      } else if (e.keyCode === 40) {
+        this.liveEntity?.releaseDown();
+      } else if (e.keyCode === 37) {
+        this.liveEntity?.releaseLeft();
+      } else if (e.keyCode === 39) {
+        this.liveEntity?.releaseRight();
+      }
+    };
 
     const requestNextFrame = () => {
       requestAnimationFrame(() => {
@@ -68,6 +93,13 @@ export class ClientGameUI extends ClientGame {
       return;
     }
     context.save();
+
+    context.fillStyle = 'white';
+    context.font = '25px bold';
+    for (const entity of this.entities) {
+      context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+      context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+    }
 
     context.restore();
   }

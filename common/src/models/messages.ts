@@ -1,13 +1,29 @@
 export type ClientToServerMessage =
   | {
       type: 'join';
-    }| {
-      type: 'join2';
+    }
+  | {
+      type: 'playerInput';
+      pressTime: number;
+      inputSequenceNumber: number;
+      left: boolean;
+      right: boolean;
+      up: boolean;
+      down: boolean;
     };
 
 export type ServerToClientMessage =
   | {
       type: 'joined';
-    }  | {
-      type: 'joined2';
+      clientId: string;
+      entityId: string;
+      x: number;
+      y: number;
+    }
+  | {
+      type: 'worldState';
+      entities: ({entityId: string; x: number; y: number} & {
+        type: 'player';
+        lastProcessedInputSequenceNumber: number;
+      })[];
     };
