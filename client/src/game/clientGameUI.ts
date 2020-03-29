@@ -4,6 +4,8 @@ import {ClientGame, LivePlayerEntity} from './clientGame';
 import {GameView} from './gameView';
 import {Utils} from '../../../common/src/utils/utils';
 import {start} from 'repl';
+import {WallEntity} from '../../../common/src/entities/entity';
+import {assert} from '../../../common/src/utils/animationUtils';
 
 export class ClientGameUI extends ClientGame {
   private canvas: HTMLCanvasElement;
@@ -106,10 +108,25 @@ export class ClientGameUI extends ClientGame {
     context.font = '25px bold';
     for (const entity of this.entities) {
       switch (entity.type) {
+        case 'wall':
+          assert(entity instanceof WallEntity);
+          context.fillStyle = 'white';
+          context.fillRect(entity.x, entity.y, entity.width, entity.height);
+          break;
+        case 'shot':
+          context.fillStyle = 'yellow';
+          // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+          context.fillRect(entity.x - 5, entity.y - 5, 10, 10);
+          break;
+      }
+    }
+
+    for (const entity of this.entities) {
+      switch (entity.type) {
         case 'player':
           if (entity instanceof LivePlayerEntity) {
             context.fillStyle = 'green';
-            context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+            // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
 
             if (!entity.positionLerp) {
               context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
@@ -129,19 +146,9 @@ export class ClientGameUI extends ClientGame {
             }
           } else {
             context.fillStyle = 'red';
-            context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+            // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
             context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
           }
-          break;
-        case 'wall':
-          context.fillStyle = 'white';
-          context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
-          context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
-          break;
-        case 'shot':
-          context.fillStyle = 'yellow';
-          context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
-          context.fillRect(entity.x - 5, entity.y - 5, 10, 10);
           break;
       }
     }

@@ -1,5 +1,6 @@
 import {Polygon, Result} from 'collisions';
 import {Game} from '../game/game';
+import {ServerGame} from '../../../server/src/game/serverGame';
 
 export type PendingInput = {
   pressTime: number;
@@ -19,19 +20,9 @@ export abstract class Entity {
   x: number = 0;
   y: number = 0;
   positionBuffer: {time: number; x: number; y: number}[] = [];
-  constructor(protected game: Game, public entityId: string, public type: EntityTypes) {
-    // todo this should go in the implementing class
-    const w = 30;
-    const h = 30;
-    this.polygon = new Polygon(this.x, this.y, [
-      [-w / 2, -h / 2],
-      [w / 2, -h / 2],
-      [w / 2, h / 2],
-      [-w / 2, h / 2],
-    ]);
-    this.polygon.entity = this;
-    this.game.collisionEngine.insert(this.polygon);
-  }
+  constructor(protected game: Game, public entityId: string, public type: EntityTypes) {}
+
+  abstract createPolygon(): void;
 
   updatePosition() {
     if (!this.polygon) {
@@ -41,11 +32,13 @@ export abstract class Entity {
     this.polygon.y = this.y;
   }
 
+  markToDestroy: boolean = false;
   destroy() {
     if (this.polygon) {
       this.game.collisionEngine.remove(this.polygon!);
       this.polygon = undefined;
     }
+    this.markToDestroy = true;
   }
 
   abstract collide(otherEntity: Entity, collisionResult: Result): boolean;
@@ -70,7 +63,23 @@ export abstract class Entity {
 }
 
 export class PlayerEntity extends Entity {
-  tick(): void {}
+  createPolygon(): void {
+    const w = 30;
+    const h = 30;
+    this.polygon = new Polygon(this.x, this.y, [
+      [-w / 2, -h / 2],
+      [w / 2, -h / 2],
+      [w / 2, h / 2],
+      [-w / 2, h / 2],
+    ]);
+    this.polygon.entity = this;
+    this.game.collisionEngine.insert(this.polygon);
+  }
+
+  tick(): void {
+    this.shootTimer = Math.max(this.shootTimer - 1, 0);
+  }
+
   lastProcessedInputSequenceNumber: number = -1;
 
   pendingInputs: PendingInput[] = [];
@@ -78,13 +87,20 @@ export class PlayerEntity extends Entity {
 
   constructor(game: Game, entityId: string) {
     super(game, entityId, 'player');
+    this.createPolygon();
   }
 
   speed = 200;
 
+  shootTimer: number = 1;
   applyInput(input: PendingInput) {
     if (input.shoot) {
-      this.game.createEntity('shot', this.x + 30 / 2, this.y);
+      if (!this.game.isClient) {
+        if (this.shootTimer <= 0) {
+          this.game.createEntity('shot', this.x, this.y);
+          this.shootTimer = 1;
+        }
+      }
     }
     if (input.left) {
       this.x -= input.pressTime * this.speed;
@@ -108,6 +124,10 @@ export class PlayerEntity extends Entity {
   collide(otherEntity: Entity, collisionResult: Result): boolean {
     switch (otherEntity.type) {
       case 'player':
+        /*this.x -= collisionResult.overlap * collisionResult.overlap_x;
+        this.y -= collisionResult.overlap * collisionResult.overlap_y;
+        this.updatePosition();
+        return true;*/
         return false;
       case 'wall':
         this.x -= collisionResult.overlap * collisionResult.overlap_x;
@@ -115,16 +135,27 @@ export class PlayerEntity extends Entity {
         this.updatePosition();
         return true;
       case 'shot':
-        console.log('shot');
+        // console.log('shot');
         return false;
     }
   }
 }
 
 export class WallEntity extends Entity {
+  createPolygon(): void {
+    this.polygon = new Polygon(this.x, this.y, [
+      [0, 0],
+      [this.width, 0],
+      [this.width, this.height],
+      [0, this.height],
+    ]);
+    this.polygon.entity = this;
+    this.game.collisionEngine.insert(this.polygon);
+  }
   tick(): void {}
-  constructor(game: Game, entityId: string) {
+  constructor(game: Game, entityId: string, public width: number, public height: number) {
     super(game, entityId, 'wall');
+    this.createPolygon();
   }
 
   collide(otherEntity: Entity, collisionResult: Result): boolean {
@@ -133,8 +164,21 @@ export class WallEntity extends Entity {
 }
 
 export class ShotEntity extends Entity {
+  createPolygon(): void {
+    const h = 30;
+    const w = 30;
+    this.polygon = new Polygon(this.x, this.y, [
+      [-w / 2, -h / 2],
+      [w / 2, -h / 2],
+      [w / 2, h / 2],
+      [-w / 2, h / 2],
+    ]);
+    this.polygon.entity = this;
+    this.game.collisionEngine.insert(this.polygon);
+  }
   constructor(game: Game, entityId: string) {
     super(game, entityId, 'shot');
+    this.createPolygon();
   }
 
   start(x: number, y: number) {
@@ -144,12 +188,21 @@ export class ShotEntity extends Entity {
   }
 
   collide(otherEntity: Entity, collisionResult: Result): boolean {
+    if (otherEntity instanceof WallEntity) {
+      this.game.destroyEntity(this);
+      return true;
+    }
     return false;
   }
 
-  shotSpeedPerSecond = 150;
+  shotSpeedPerSecond = 900;
+  aliveDuration = 3000;
   tick(duration: number) {
     this.y -= this.shotSpeedPerSecond * (duration / 1000);
+    this.aliveDuration -= duration;
     this.updatePosition();
+    if (this.aliveDuration <= 0) {
+      this.game.destroyEntity(this);
+    }
   }
 }

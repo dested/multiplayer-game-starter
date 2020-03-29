@@ -12,7 +12,7 @@ export class ServerGame extends Game {
   users: {connectionId: string; entity: ServerPlayerEntity}[] = [];
 
   constructor(private serverSocket: IServerSocket) {
-    super();
+    super(false);
     serverSocket.start(
       connectionId => {},
       connectionId => {
@@ -29,13 +29,16 @@ export class ServerGame extends Game {
     let time = +new Date();
     let tickTime = 0;
 
-    for (let i = 0; i < 30; i++) {
-      const wallEntity = new WallEntity(this, uuid());
-      wallEntity.x = Math.random() * 1000;
-      wallEntity.y = Math.random() * 1000;
-      wallEntity.updatePosition();
-      this.entities.push(wallEntity);
-    }
+    const wallEntity1 = new WallEntity(this, uuid(), 100, 1000);
+    wallEntity1.x = 50;
+    wallEntity1.y = 50;
+    wallEntity1.updatePosition();
+    this.entities.push(wallEntity1);
+    const wallEntity2 = new WallEntity(this, uuid(), 1000, 100);
+    wallEntity2.x = 50;
+    wallEntity2.y = 600;
+    wallEntity2.updatePosition();
+    this.entities.push(wallEntity2);
 
     const processTick = () => {
       try {
@@ -78,8 +81,8 @@ export class ServerGame extends Game {
     // const teamId = uuid();
     // const color = ColorUtils.randomColor();
     const entity = new ServerPlayerEntity(this, uuid());
-    entity.x = Math.random() * 200;
-    entity.y = Math.random() * 200;
+    entity.x = Math.random() * 1000;
+    entity.y = Math.random() * 1000;
     this.users.push({connectionId, entity});
     this.entities.push(entity);
     this.sendMessageToClient(connectionId, {
@@ -115,9 +118,10 @@ export class ServerGame extends Game {
         case 'playerInput': {
           // if (this.validateInput(q.message)) {
           const user = this.users.find(a => a.connectionId === q.connectionId);
-          user.entity.applyInput(q.message);
-          this.checkCollisions();
-          // }
+          if (user) {
+            user.entity.applyInput(q.message);
+            this.checkCollisions();
+          } // }
 
           break;
         }
@@ -155,6 +159,8 @@ export class ServerGame extends Game {
             return {
               x: e.x,
               y: e.y,
+              width: e.width,
+              height: e.height,
               entityId: e.entityId,
               type: 'wall',
             };
@@ -164,11 +170,19 @@ export class ServerGame extends Game {
               x: e.x,
               y: e.y,
               entityId: e.entityId,
+              markToDestroy: e.markToDestroy,
               type: 'shot',
             };
         }
       }),
     });
+
+    for (let i = this.entities.length - 1; i >= 0; i--) {
+      const entity = this.entities[i];
+      if (entity.markToDestroy) {
+        this.entities.splice(i, 1);
+      }
+    }
 
     for (const c of this.users) {
       const messages: ServerToClientMessage[] = [];
@@ -197,10 +211,29 @@ export class ServerGame extends Game {
   processMessage(connectionId: string, message: ClientToServerMessage) {
     this.queuedMessages.push({connectionId, message});
   }
+
+  createEntity(type: 'shot', x: number, y: number) {
+    switch (type) {
+      case 'shot':
+        const shotEntity = new ShotEntity(this, uuid());
+        shotEntity.start(x, y);
+        this.sendMessageToClients({
+          type: 'createEntity',
+          entityType: 'shot',
+          entityId: shotEntity.entityId,
+          x: shotEntity.x,
+          y: shotEntity.y,
+        });
+        this.entities.push(shotEntity);
+        break;
+    }
+  }
 }
 
 export class ServerPlayerEntity extends PlayerEntity {
-  tick(): void {}
+  tick(): void {
+    super.tick();
+  }
   applyInput(input: PendingInput) {
     super.applyInput(input);
     this.lastProcessedInputSequenceNumber = input.inputSequenceNumber;

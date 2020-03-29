@@ -22,6 +22,13 @@ export type ServerToClientMessage =
       y: number;
     }
   | {
+      type: 'createEntity';
+      entityType: 'shot';
+      entityId: string;
+      x: number;
+      y: number;
+    }
+  | {
       type: 'worldState';
       entities: ({entityId: string; x: number; y: number} & (
         | {
@@ -30,9 +37,12 @@ export type ServerToClientMessage =
           }
         | {
             type: 'wall';
+            width: number;
+            height: number;
           }
         | {
             type: 'shot';
+            markToDestroy: boolean;
           }
       ))[];
     };

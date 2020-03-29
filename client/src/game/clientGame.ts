@@ -17,7 +17,7 @@ export class ClientGame extends Game {
     private options: {onDied: (me: ClientGame) => void; onDisconnect: (me: ClientGame) => void},
     private socket: IClientSocket
   ) {
-    super();
+    super(true);
     this.connectionId = uuid();
     this.socket.connect({
       onOpen: () => {
@@ -105,8 +105,33 @@ export class ClientGame extends Game {
             this.entities.push(clientEntity);
           }
           break;
+        case 'createEntity':
+          {
+            switch (message.entityType) {
+              case 'shot':
+                const shotEntity = new ShotEntity(this, message.entityId);
+                shotEntity.x = message.x;
+                shotEntity.y = message.y;
+                shotEntity.positionBuffer.push({
+                  time: +new Date() - GameConstants.serverTickRate,
+                  x: message.x,
+                  y: message.y,
+                });
+                shotEntity.updatePosition();
+                this.entities.push(shotEntity);
+                break;
+            }
+          }
+          break;
         case 'worldState':
           {
+            for (let i = this.entities.length - 1; i >= 0; i--) {
+              const entity = this.entities[i];
+              if (message.entities.find(a => a.entityId === entity.entityId)) {
+                continue;
+              }
+              this.entities.splice(i, 1);
+            }
             for (const entity of message.entities) {
               let foundEntity = this.entities.find(a => a.entityId === entity.entityId);
               if (!foundEntity) {
@@ -119,7 +144,7 @@ export class ClientGame extends Game {
                     foundEntity = playerEntity;
                     break;
                   case 'wall':
-                    const wallEntity = new WallEntity(this, entity.entityId);
+                    const wallEntity = new WallEntity(this, entity.entityId, entity.width, entity.height);
                     wallEntity.x = entity.x;
                     wallEntity.y = entity.y;
                     foundEntity = wallEntity;
@@ -163,7 +188,7 @@ export class ClientGame extends Game {
       }
     }
   }
-
+  createEntity(entityType: string, x: number, y: number): void {}
   tick(duration: number) {
     if (!this.connectionId) {
       return;
@@ -178,7 +203,7 @@ export class ClientGame extends Game {
 
     this.processInputs(duration);
     for (const entity of this.entities) {
-      entity.tick(duration);
+      // entity.tick(duration);
     }
     this.checkCollisions();
   }

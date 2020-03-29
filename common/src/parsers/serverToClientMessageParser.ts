@@ -12,6 +12,9 @@ export class ServerToClientMessageParser {
         case 'joined':
           buff.addUint8(1);
           break;
+        case 'createEntity':
+          buff.addUint8(1);
+          break;
         case 'worldState':
           break;
         default:

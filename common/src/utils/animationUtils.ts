@@ -149,5 +149,4 @@ export class AnimationInstance {
   cancel: boolean = false;
 }
 
-export function assert(assertion: boolean): asserts assertion {
-}
+export function assert(assertion: boolean): asserts assertion {}

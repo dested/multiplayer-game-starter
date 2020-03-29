@@ -2,12 +2,12 @@ import {Collisions, Result} from 'collisions';
 import {Entity, ShotEntity} from '../entities/entity';
 import {uuid} from '../utils/uuid';
 
-export class Game {
+export abstract class Game {
   entities: Entity[] = [];
   collisionEngine: Collisions;
   readonly collisionResult: Result;
 
-  constructor() {
+  constructor(public isClient: boolean) {
     this.collisionEngine = new Collisions();
     this.collisionResult = this.collisionEngine.createResult();
   }
@@ -21,13 +21,9 @@ export class Game {
     }
   }
 
-  createEntity(type: 'shot', x: number, y: number) {
-    switch (type) {
-      case 'shot':
-        const shotEntity = new ShotEntity(this, uuid());
-        shotEntity.start(x, y);
-        this.entities.push(shotEntity);
-        break;
-    }
+  abstract createEntity(entityType: string, x: number, y: number): void;
+
+  destroyEntity(entity: Entity) {
+    entity.destroy();
   }
 }
