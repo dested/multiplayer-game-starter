@@ -1,7 +1,9 @@
 import {Manager, Pan, Pinch, Press, Swipe, Tap} from 'hammerjs';
 import {ClientSocket, IClientSocket} from '../clientSocket';
-import {ClientGame} from './clientGame';
+import {ClientGame, LivePlayerEntity} from './clientGame';
 import {GameView} from './gameView';
+import {Utils} from '../../../common/src/utils/utils';
+import {start} from 'repl';
 
 export class ClientGameUI extends ClientGame {
   private canvas: HTMLCanvasElement;
@@ -49,6 +51,9 @@ export class ClientGameUI extends ClientGame {
     manager.on('doubletap', e => {});
 */
     document.onkeydown = e => {
+      if (e.keyCode === 65) {
+        this.liveEntity?.pressShoot();
+      }
       if (e.keyCode === 38) {
         this.liveEntity?.pressUp();
       } else if (e.keyCode === 40) {
@@ -61,6 +66,10 @@ export class ClientGameUI extends ClientGame {
       // e.preventDefault();
     };
     document.onkeyup = e => {
+      if (e.keyCode === 65) {
+        this.liveEntity?.releaseShoot();
+      }
+
       if (e.keyCode === 38) {
         this.liveEntity?.releaseUp();
       } else if (e.keyCode === 40) {
@@ -98,14 +107,41 @@ export class ClientGameUI extends ClientGame {
     for (const entity of this.entities) {
       switch (entity.type) {
         case 'player':
-          context.fillStyle = 'red';
-          context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
-          context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+          if (entity instanceof LivePlayerEntity) {
+            context.fillStyle = 'green';
+            context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+
+            if (!entity.positionLerp) {
+              context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+            } else {
+              const {x, y, startTime, duration} = entity.positionLerp;
+              const now = +new Date();
+              if (now >= startTime + duration) {
+                context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+              } else {
+                context.fillRect(
+                  Utils.lerp(x, entity.x, (now - startTime) / duration) - 15,
+                  Utils.lerp(y, entity.y, (now - startTime) / duration) - 15,
+                  30,
+                  30
+                );
+              }
+            }
+          } else {
+            context.fillStyle = 'red';
+            context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+            context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+          }
           break;
         case 'wall':
           context.fillStyle = 'white';
           context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
           context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+          break;
+        case 'shot':
+          context.fillStyle = 'yellow';
+          context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+          context.fillRect(entity.x - 5, entity.y - 5, 10, 10);
           break;
       }
     }

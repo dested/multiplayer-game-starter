@@ -1,5 +1,6 @@
 import {Collisions, Result} from 'collisions';
-import {Entity} from '../entities/entity';
+import {Entity, ShotEntity} from '../entities/entity';
+import {uuid} from '../utils/uuid';
 
 export class Game {
   entities: Entity[] = [];
@@ -17,6 +18,16 @@ export class Game {
     for (let i = this.entities.length - 1; i >= 0; i--) {
       const entity = this.entities[i];
       entity.checkCollisions();
+    }
+  }
+
+  createEntity(type: 'shot', x: number, y: number) {
+    switch (type) {
+      case 'shot':
+        const shotEntity = new ShotEntity(this, uuid());
+        shotEntity.start(x, y);
+        this.entities.push(shotEntity);
+        break;
     }
   }
 }

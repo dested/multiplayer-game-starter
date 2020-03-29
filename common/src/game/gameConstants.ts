@@ -3,4 +3,5 @@ export class GameConstants {
   static debugDraw = false;
   static binaryTransport = false;
   static serverTickRate = 200;
+  static clientTickRate = 50;
 }

@@ -177,4 +177,8 @@ export class Utils {
   static roundUpTo8(value: number) {
     return value + (8 - (value % 8));
   }
+
+  static lerp(v0: number, v1: number, t: number) {
+    return v0 * (1 - t) + v1 * t;
+  }
 }

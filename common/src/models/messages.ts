@@ -7,6 +7,7 @@ export type ClientToServerMessage =
       pressTime: number;
       inputSequenceNumber: number;
       left: boolean;
+      shoot: boolean;
       right: boolean;
       up: boolean;
       down: boolean;
@@ -29,6 +30,9 @@ export type ServerToClientMessage =
           }
         | {
             type: 'wall';
+          }
+        | {
+            type: 'shot';
           }
       ))[];
     };

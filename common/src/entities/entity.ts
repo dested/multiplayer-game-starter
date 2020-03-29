@@ -5,12 +5,13 @@ export type PendingInput = {
   pressTime: number;
   inputSequenceNumber: number;
   left: boolean;
+  shoot: boolean;
   right: boolean;
   up: boolean;
   down: boolean;
 };
 
-export type EntityTypes = 'player' | 'wall';
+export type EntityTypes = 'player' | 'wall' | 'shot';
 
 export abstract class Entity {
   polygon?: Polygon;
@@ -64,9 +65,12 @@ export abstract class Entity {
     }
     return false;
   }
+
+  abstract tick(duration: number): void;
 }
 
 export class PlayerEntity extends Entity {
+  tick(): void {}
   lastProcessedInputSequenceNumber: number = -1;
 
   pendingInputs: PendingInput[] = [];
@@ -79,6 +83,9 @@ export class PlayerEntity extends Entity {
   speed = 200;
 
   applyInput(input: PendingInput) {
+    if (input.shoot) {
+      this.game.createEntity('shot', this.x + 30 / 2, this.y);
+    }
     if (input.left) {
       this.x -= input.pressTime * this.speed;
     }
@@ -107,16 +114,42 @@ export class PlayerEntity extends Entity {
         this.y -= collisionResult.overlap * collisionResult.overlap_y;
         this.updatePosition();
         return true;
+      case 'shot':
+        console.log('shot');
+        return false;
     }
   }
 }
 
 export class WallEntity extends Entity {
+  tick(): void {}
   constructor(game: Game, entityId: string) {
     super(game, entityId, 'wall');
   }
 
   collide(otherEntity: Entity, collisionResult: Result): boolean {
     return false;
+  }
+}
+
+export class ShotEntity extends Entity {
+  constructor(game: Game, entityId: string) {
+    super(game, entityId, 'shot');
+  }
+
+  start(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+    this.updatePosition();
+  }
+
+  collide(otherEntity: Entity, collisionResult: Result): boolean {
+    return false;
+  }
+
+  shotSpeedPerSecond = 150;
+  tick(duration: number) {
+    this.y -= this.shotSpeedPerSecond * (duration / 1000);
+    this.updatePosition();
   }
 }

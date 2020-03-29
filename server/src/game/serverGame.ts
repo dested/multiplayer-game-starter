@@ -4,7 +4,7 @@ import {IServerSocket} from '../serverSocket';
 import {uuid} from '../../../common/src/utils/uuid';
 import {ColorUtils} from '../../../common/src/utils/colorUtils';
 import {GameConstants} from '../../../common/src/game/gameConstants';
-import {Entity, PendingInput, PlayerEntity, WallEntity} from '../../../common/src/entities/entity';
+import {Entity, PendingInput, PlayerEntity, ShotEntity, WallEntity} from '../../../common/src/entities/entity';
 import {assert} from '../../../common/src/utils/animationUtils';
 import {Game} from '../../../common/src/game/game';
 
@@ -93,7 +93,7 @@ export class ServerGame extends Game {
 
   serverTick(tickIndex: number, duration: number, tickTime: number) {
     console.log(
-      `tick: ${tickIndex}, Teams: ${this.users.length}, Messages:${this.queuedMessages.length}, Duration: ${tickTime}`
+      `tick: ${tickIndex}, Users: ${this.users.length}, Entities: ${this.entities.length}, Messages:${this.queuedMessages.length}, Duration: ${tickTime}`
     );
 
     const time = +new Date();
@@ -131,6 +131,10 @@ export class ServerGame extends Game {
       console.log(this.queuedMessages.length, 'remaining');
     }
 
+    for (const entity of this.entities) {
+      entity.tick(duration);
+    }
+
     this.checkCollisions();
 
     this.sendMessageToClients({
@@ -153,6 +157,14 @@ export class ServerGame extends Game {
               y: e.y,
               entityId: e.entityId,
               type: 'wall',
+            };
+          case 'shot':
+            assert(e instanceof ShotEntity);
+            return {
+              x: e.x,
+              y: e.y,
+              entityId: e.entityId,
+              type: 'shot',
             };
         }
       }),
@@ -188,6 +200,7 @@ export class ServerGame extends Game {
 }
 
 export class ServerPlayerEntity extends PlayerEntity {
+  tick(): void {}
   applyInput(input: PendingInput) {
     super.applyInput(input);
     this.lastProcessedInputSequenceNumber = input.inputSequenceNumber;
