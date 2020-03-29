@@ -22,8 +22,13 @@ export type ServerToClientMessage =
     }
   | {
       type: 'worldState';
-      entities: ({entityId: string; x: number; y: number} & {
-        type: 'player';
-        lastProcessedInputSequenceNumber: number;
-      })[];
+      entities: ({entityId: string; x: number; y: number} & (
+        | {
+            type: 'player';
+            lastProcessedInputSequenceNumber: number;
+          }
+        | {
+            type: 'wall';
+          }
+      ))[];
     };

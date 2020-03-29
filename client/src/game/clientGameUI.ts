@@ -94,11 +94,20 @@ export class ClientGameUI extends ClientGame {
     }
     context.save();
 
-    context.fillStyle = 'white';
     context.font = '25px bold';
     for (const entity of this.entities) {
-      context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
-      context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+      switch (entity.type) {
+        case 'player':
+          context.fillStyle = 'red';
+          context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+          context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+          break;
+        case 'wall':
+          context.fillStyle = 'white';
+          context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+          context.fillRect(entity.x - 15, entity.y - 15, 30, 30);
+          break;
+      }
     }
 
     context.restore();

@@ -3,19 +3,20 @@ import {unreachable} from '../../../common/src/utils/unreachable';
 import {uuid} from '../../../common/src/utils/uuid';
 import {ClientSocket, IClientSocket} from '../clientSocket';
 import {GameConstants} from '../../../common/src/game/gameConstants';
-import {Entity} from '../../../common/src/entities/entity';
+import {Entity, PlayerEntity, WallEntity} from '../../../common/src/entities/entity';
+import {Game} from '../../../common/src/game/game';
 
-export class ClientGame {
+export class ClientGame extends Game {
   connectionId: string;
   protected isDead: boolean = false;
 
-  entities: ClientEntity[] = [];
-  protected liveEntity?: ClientEntity;
+  protected liveEntity?: ClientPlayerEntity;
 
   constructor(
     private options: {onDied: (me: ClientGame) => void; onDisconnect: (me: ClientGame) => void},
     private socket: IClientSocket
   ) {
+    super();
     this.connectionId = uuid();
     this.socket.connect({
       onOpen: () => {
@@ -70,7 +71,7 @@ export class ClientGame {
       switch (message.type) {
         case 'joined':
           {
-            const clientEntity = new ClientEntity(message.entityId);
+            const clientEntity = new ClientPlayerEntity(this, message.entityId);
             clientEntity.x = message.x;
             clientEntity.y = message.y;
             this.liveEntity = clientEntity;
@@ -82,28 +83,42 @@ export class ClientGame {
             for (const entity of message.entities) {
               let foundEntity = this.entities.find(a => a.entityId === entity.entityId);
               if (!foundEntity) {
-                foundEntity = new ClientEntity(entity.entityId);
-                foundEntity.x = entity.x;
-                foundEntity.y = entity.y;
-                foundEntity.lastProcessedInputSequenceNumber = entity.lastProcessedInputSequenceNumber;
+                switch (entity.type) {
+                  case 'player':
+                    const playerEntity = new ClientPlayerEntity(this, entity.entityId);
+                    playerEntity.x = entity.x;
+                    playerEntity.y = entity.y;
+                    playerEntity.lastProcessedInputSequenceNumber = entity.lastProcessedInputSequenceNumber;
+                    foundEntity = playerEntity;
+                    break;
+                  case 'wall':
+                    const wallEntity = new WallEntity(this, entity.entityId);
+                    wallEntity.x = entity.x;
+                    wallEntity.y = entity.y;
+                    foundEntity = wallEntity;
+                    wallEntity.updatePosition();
+                    break;
+                }
                 this.entities.push(foundEntity);
               }
 
-              if (foundEntity.entityId === this.liveEntity?.entityId) {
+              if (foundEntity.entityId === this.liveEntity?.entityId && entity.type === 'player') {
                 foundEntity.x = entity.x;
                 foundEntity.y = entity.y;
 
-                let j = 0;
-                while (j < foundEntity.pendingInputs.length) {
-                  const input = foundEntity.pendingInputs[j];
-                  if (input.inputSequenceNumber <= entity.lastProcessedInputSequenceNumber) {
-                    // Already processed. Its effect is already taken into account into the world update
-                    // we just got, so we can drop it.
-                    foundEntity.pendingInputs.splice(j, 1);
-                  } else {
-                    // Not processed by the server yet. Re-apply it.
-                    foundEntity.applyInput(input);
-                    j++;
+                if (foundEntity instanceof ClientPlayerEntity) {
+                  let j = 0;
+                  while (j < foundEntity.pendingInputs.length) {
+                    const input = foundEntity.pendingInputs[j];
+                    if (input.inputSequenceNumber <= entity.lastProcessedInputSequenceNumber) {
+                      // Already processed. Its effect is already taken into account into the world update
+                      // we just got, so we can drop it.
+                      foundEntity.pendingInputs.splice(j, 1);
+                    } else {
+                      // Not processed by the server yet. Re-apply it.
+                      foundEntity.applyInput(input);
+                      j++;
+                    }
                   }
                 }
               } else {
@@ -125,6 +140,7 @@ export class ClientGame {
     }
 
     this.processInputs(duration);
+    this.checkCollisions();
     this.interpolateEntities();
   }
 
@@ -192,14 +208,13 @@ export class ClientGame {
     this.sendMessageToServer({type: 'playerInput', ...input});
 
     this.liveEntity.applyInput(input);
-
     this.liveEntity.pendingInputs.push(input);
   }
 }
 
-export class ClientEntity extends Entity {
-  constructor(public entityId: string) {
-    super(entityId);
+export class ClientPlayerEntity extends PlayerEntity {
+  constructor(game: Game, public entityId: string) {
+    super(game, entityId);
   }
 
   keys = {up: false, down: false, left: false, right: false};

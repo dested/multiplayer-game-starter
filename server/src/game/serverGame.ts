@@ -4,14 +4,15 @@ import {IServerSocket} from '../serverSocket';
 import {uuid} from '../../../common/src/utils/uuid';
 import {ColorUtils} from '../../../common/src/utils/colorUtils';
 import {GameConstants} from '../../../common/src/game/gameConstants';
-import {Entity, PendingInput} from '../../../common/src/entities/entity';
+import {Entity, PendingInput, PlayerEntity, WallEntity} from '../../../common/src/entities/entity';
+import {assert} from '../../../common/src/utils/animationUtils';
+import {Game} from '../../../common/src/game/game';
 
-export class ServerGame {
-  users: {connectionId: string; entity: ServerEntity}[] = [];
-
-  entities: ServerEntity[] = [];
+export class ServerGame extends Game {
+  users: {connectionId: string; entity: ServerPlayerEntity}[] = [];
 
   constructor(private serverSocket: IServerSocket) {
+    super();
     serverSocket.start(
       connectionId => {},
       connectionId => {
@@ -27,6 +28,15 @@ export class ServerGame {
     let serverTick = 0;
     let time = +new Date();
     let tickTime = 0;
+
+    for (let i = 0; i < 30; i++) {
+      const wallEntity = new WallEntity(this, uuid());
+      wallEntity.x = Math.random() * 1000;
+      wallEntity.y = Math.random() * 1000;
+      wallEntity.updatePosition();
+      this.entities.push(wallEntity);
+    }
+
     const processTick = () => {
       try {
         const now = +new Date();
@@ -67,7 +77,7 @@ export class ServerGame {
   clientJoin(connectionId: string) {
     // const teamId = uuid();
     // const color = ColorUtils.randomColor();
-    const entity = new ServerEntity(uuid());
+    const entity = new ServerPlayerEntity(this, uuid());
     entity.x = Math.random() * 200;
     entity.y = Math.random() * 200;
     this.users.push({connectionId, entity});
@@ -106,6 +116,7 @@ export class ServerGame {
           // if (this.validateInput(q.message)) {
           const user = this.users.find(a => a.connectionId === q.connectionId);
           user.entity.applyInput(q.message);
+          this.checkCollisions();
           // }
 
           break;
@@ -120,15 +131,31 @@ export class ServerGame {
       console.log(this.queuedMessages.length, 'remaining');
     }
 
+    this.checkCollisions();
+
     this.sendMessageToClients({
       type: 'worldState',
-      entities: this.entities.map(e => ({
-        x: e.x,
-        y: e.y,
-        entityId: e.entityId,
-        lastProcessedInputSequenceNumber: e.lastProcessedInputSequenceNumber,
-        type: 'player',
-      })),
+      entities: this.entities.map(e => {
+        switch (e.type) {
+          case 'player':
+            assert(e instanceof PlayerEntity);
+            return {
+              x: e.x,
+              y: e.y,
+              entityId: e.entityId,
+              lastProcessedInputSequenceNumber: e.lastProcessedInputSequenceNumber,
+              type: 'player',
+            };
+          case 'wall':
+            assert(e instanceof WallEntity);
+            return {
+              x: e.x,
+              y: e.y,
+              entityId: e.entityId,
+              type: 'wall',
+            };
+        }
+      }),
     });
 
     for (const c of this.users) {
@@ -160,7 +187,7 @@ export class ServerGame {
   }
 }
 
-export class ServerEntity extends Entity {
+export class ServerPlayerEntity extends PlayerEntity {
   applyInput(input: PendingInput) {
     super.applyInput(input);
     this.lastProcessedInputSequenceNumber = input.inputSequenceNumber;

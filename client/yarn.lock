@@ -3576,6 +3576,11 @@ collection-visit@^1.0.0:
     map-visit "^1.0.0"
     object-visit "^1.0.0"
 
+collisions@^2.0.13:
+  version "2.0.13"
+  resolved "https://registry.yarnpkg.com/collisions/-/collisions-2.0.13.tgz#ab3d87022f62cd351fa8cbd676857a402fbc3b19"
+  integrity sha512-KOTVGrIlzTkgmZp/OlYruqVpuAuBGcGTWurLp56n4+9c7NHBYWlF3TtNZc6hTr22GiGPE34+frBugQV4OEmFjQ==
+
 color-convert@^1.9.0, color-convert@^1.9.1:
   version "1.9.3"
   resolved "https://registry.yarnpkg.com/color-convert/-/color-convert-1.9.3.tgz#bb71850690e1f136567de629d2d5471deda4c1e8"
