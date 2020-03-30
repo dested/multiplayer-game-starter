@@ -43,11 +43,11 @@ export class ServerGame extends Game {
     wallEntity1.y = 50;
     wallEntity1.updatePosition();
     this.entities.push(wallEntity1);
-    const wallEntity2 = new WallEntity(this, uuid(), 1000, 100);
+    /*const wallEntity2 = new WallEntity(this, uuid(), 1000, 100);
     wallEntity2.x = 50;
     wallEntity2.y = 600;
     wallEntity2.updatePosition();
-    this.entities.push(wallEntity2);
+    this.entities.push(wallEntity2);*/
 
     const processTick = () => {
       try {
@@ -145,7 +145,10 @@ export class ServerGame extends Game {
     }
 
     if (tickIndex % 50 === 0) {
-      this.createEntity('swoopingEnemy', {x: 500, y: 100, health: 10});
+      const x = Math.random() * 1000;
+      this.createEntity('swoopingEnemy', {x, y: -100, health: 10});
+      this.createEntity('swoopingEnemy', {x, y: -100, health: 10});
+      this.createEntity('swoopingEnemy', {x, y: -100, health: 10});
     }
 
     for (const entity of this.entities) {
@@ -254,6 +257,7 @@ export class ServerGame extends Game {
         break;
       case 'swoopingEnemy':
         const swoopingEnemyEntity = new SwoopingEnemyEntity(this, uuid(), options.health);
+        swoopingEnemyEntity.setStartPosition(options.x, options.y);
         swoopingEnemyEntity.start(options.x, options.y);
         this.sendMessageToClients({
           type: 'createEntity',

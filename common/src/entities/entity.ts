@@ -1,6 +1,7 @@
 import {Polygon, Result} from 'collisions';
 import {Game} from '../game/game';
 import {ServerGame} from '../../../server/src/game/serverGame';
+import {Utils} from '../utils/utils';
 
 export type PendingInput = {
   pressTime: number;
@@ -175,6 +176,14 @@ export class WallEntity extends Entity {
   }
 }
 export class SwoopingEnemyEntity extends Entity {
+  startX?: number;
+  startY?: number;
+
+  setStartPosition(x: number, y: number) {
+    this.startX = x;
+    this.startY = y;
+  }
+
   createPolygon(): void {
     const w = 30;
     const h = 30;
@@ -187,14 +196,69 @@ export class SwoopingEnemyEntity extends Entity {
     this.polygon.entity = this;
     this.game.collisionEngine.insert(this.polygon);
   }
+
+  paths = [
+    {x: 0, y: 0},
+    {x: -20, y: 50 * 4},
+    {x: -40, y: 100 * 4},
+    {x: -20, y: 150 * 4},
+    {x: 0, y: 200 * 4},
+    {x: 20, y: 175 * 4},
+    {x: 40, y: 150 * 4},
+  ];
+  swaddle = [
+    {x: 0, y: -50},
+    {x: 0, y: +50},
+    {x: 0, y: -50},
+  ];
+
+  pathTick = 0;
+  pathIndex = 1;
+
+  step: 'path' | 'swaddle' = 'path';
   tick(): void {
     if (this.health <= 0) {
       this.game.destroyEntity(this);
     }
+    if (this.step === 'path') {
+      const pathDuration = 5;
+      this.x =
+        Utils.lerp(this.paths[this.pathIndex - 1].x, this.paths[this.pathIndex].x, this.pathTick / pathDuration) +
+        this.startX!;
+      this.y =
+        Utils.lerp(this.paths[this.pathIndex - 1].y, this.paths[this.pathIndex].y, this.pathTick / pathDuration) +
+        this.startY!;
 
-    
-    this.x += Math.sin(this.x) * 10;
-    this.y += Math.cos(this.y) * 10;
+      this.pathTick++;
+      if (this.pathTick % pathDuration === 0) {
+        this.pathIndex++;
+        this.pathTick = 0;
+        if (this.pathIndex >= this.paths.length) {
+          this.pathIndex = 1;
+          this.step = 'swaddle';
+          this.startX = this.x;
+          this.startY = this.y;
+        }
+      }
+    } else if (this.step === 'swaddle') {
+      const pathDuration = 5;
+      this.x =
+        Utils.lerp(this.swaddle[this.pathIndex - 1].x, this.swaddle[this.pathIndex].x, this.pathTick / pathDuration) +
+        this.startX!;
+      this.y =
+        Utils.lerp(this.swaddle[this.pathIndex - 1].y, this.swaddle[this.pathIndex].y, this.pathTick / pathDuration) +
+        this.startY!;
+
+      this.pathTick++;
+      if (this.pathTick % pathDuration === 0) {
+        this.pathIndex++;
+        this.pathTick = 0;
+        if (this.pathIndex >= this.swaddle.length) {
+          this.pathIndex = 1;
+        }
+      }
+    }
+
     this.updatePosition();
   }
   constructor(game: Game, entityId: string, public health: number) {

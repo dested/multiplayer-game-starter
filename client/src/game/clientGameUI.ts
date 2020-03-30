@@ -4,13 +4,15 @@ import {ClientGame, LivePlayerEntity} from './clientGame';
 import {GameView} from './gameView';
 import {Utils} from '../../../common/src/utils/utils';
 import {start} from 'repl';
-import {WallEntity} from '../../../common/src/entities/entity';
+import {ShotEntity, SwoopingEnemyEntity, WallEntity} from '../../../common/src/entities/entity';
 import {assert} from '../../../common/src/utils/animationUtils';
+import {INoise, noise} from '../utils/perlin';
 
 export class ClientGameUI extends ClientGame {
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
   view: GameView;
+  private noise: INoise = noise;
 
   constructor(options: {onDied: () => void; onDisconnect: () => void}, socket: IClientSocket) {
     super(options, socket);
@@ -37,10 +39,9 @@ export class ClientGameUI extends ClientGame {
       true
     );
 
-    /*
     let lastPress: Date = new Date();
     let doubleTap = false;
-      manager.on('press', e => {
+    manager.on('press', e => {
       doubleTap = +new Date() - +lastPress < 200;
       lastPress = new Date();
     });
@@ -48,10 +49,19 @@ export class ClientGameUI extends ClientGame {
       doubleTap = false;
     });
 
-    manager.on('tap', e => {});
+    const path: {x: number; y: number}[] = [];
+    let startPoint: {x: number; y: number};
+    manager.on('tap', e => {
+      if (path.length === 0) {
+        path.push({x: 0, y: 0});
+        startPoint = e.center;
+      } else {
+        path.push({x: e.center.x - startPoint.x, y: e.center.y - startPoint.y});
+      }
+      console.log(JSON.stringify(path, null, 2));
+    });
 
     manager.on('doubletap', e => {});
-*/
     document.onkeydown = e => {
       if (e.keyCode === 65) {
         this.liveEntity?.pressShoot();
@@ -92,7 +102,9 @@ export class ClientGameUI extends ClientGame {
     requestNextFrame();
   }
 
+  frame = 0;
   draw() {
+    this.frame++;
     const context = this.context;
 
     context.fillStyle = 'rgba(0,0,0,1)';
@@ -105,6 +117,25 @@ export class ClientGameUI extends ClientGame {
     }
     context.save();
 
+    context.save();
+    const outerBox = this.view.outerViewBox;
+    const box = this.view.viewBox;
+    context.scale(this.view.scale, this.view.scale);
+    context.translate(-box.x, -box.y);
+
+    context.save();
+    context.translate(0, this.frame / 2);
+    for (const element of this.getStars()) {
+      context.fillStyle = `rgba(255,255,255,${element.n / 2})`;
+      context.fillRect(
+        element.x + (16 - element.n * 16) / 2,
+        element.y + (16 - element.n * 16) / 2,
+        16 * element.n,
+        16 * element.n
+      );
+    }
+    context.restore();
+
     context.font = '25px bold';
     for (const entity of this.entities) {
       switch (entity.type) {
@@ -114,13 +145,15 @@ export class ClientGameUI extends ClientGame {
           context.fillRect(entity.x, entity.y, entity.width, entity.height);
           break;
         case 'shot':
+          assert(entity instanceof ShotEntity);
           context.fillStyle = 'yellow';
           // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
           context.fillRect(entity.x - 5, entity.y - 5, 10, 10);
           break;
         case 'swoopingEnemy':
+          assert(entity instanceof SwoopingEnemyEntity);
           context.fillStyle = 'red';
-          // context.fillText(`${entity.x.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
+          context.fillText(`${entity.health.toFixed(1)},${entity.y.toFixed(1)}`, entity.x, entity.y - 25);
           context.fillRect(entity.x - 25, entity.y - 25, 50, 50);
           break;
       }
@@ -157,7 +190,26 @@ export class ClientGameUI extends ClientGame {
           break;
       }
     }
+    context.restore();
 
     context.restore();
   }
+
+  *getStars(): Iterable<Star> {
+    const starX = Math.round(this.view.viewX / 16);
+    const starW = Math.round((this.view.viewX + this.view.viewWidth) / 16);
+    const starY = Math.round((this.view.viewY - this.frame / 2) / 16);
+    const starH = Math.round((this.view.viewY - this.frame / 2 + this.view.viewHeight) / 16);
+
+    for (let x = starX - 2; x < starW + 2; x += 1) {
+      for (let y = starY - 5; y < starH + 5; y += 1) {
+        const n = this.noise.simplex2(x, y);
+        if (n < 1) {
+          yield {x: x * 16, y: y * 16, n};
+        }
+      }
+    }
+  }
 }
+
+type Star = {x: number; y: number; n: number};
